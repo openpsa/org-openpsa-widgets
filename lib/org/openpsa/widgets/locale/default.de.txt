@@ -1,0 +1,19 @@
+---# MidCOM String Database
+---VERSION 2.1.0
+---LANGUAGE de
+
+---STRING more
+mehr
+---STRINGEND
+
+---STRING no person
+Keine Person
+---STRINGEND
+
+---STRING status
+Status
+---STRINGEND
+
+---STRING status history
+Status-Verlauf
+---STRINGEND
