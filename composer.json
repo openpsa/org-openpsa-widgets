@@ -1,0 +1,24 @@
+{
+    "name": "openpsa/org-openpsa-widgets",
+    "type": "midcom-package",
+    "description": "OpenPSA common UI elements",
+    "keywords": ["midcom", "openpsa", "widgets"],
+    "homepage": "https://openpsa2.org",
+    "license": "LGPL-2.1-or-later",
+    "authors": [
+        {
+            "name": "Andreas Flack",
+            "email": "flack@contentcontrol-berlin.de",
+            "homepage": "http://www.contentcontrol-berlin.de/"
+        }
+    ],
+    "require": {
+        "openpsa/midcom-core": "dev-main",
+        "openpsa/org-openpsa-core": "dev-main",
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev",
+    "autoload": {
+        "classmap": ["lib"]
+    }
+}
