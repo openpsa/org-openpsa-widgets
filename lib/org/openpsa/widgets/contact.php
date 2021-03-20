@@ -19,11 +19,6 @@ use midcom\datamanager\storage\blobs;
 class org_openpsa_widgets_contact extends midcom_baseclasses_components_purecode
 {
     /**
-     * Do we have our contact data ?
-     */
-    private $_data_read_ok = false;
-
-    /**
      * Contact information of the person being displayed
      */
     public $contact_details = [
@@ -79,11 +74,8 @@ class org_openpsa_widgets_contact extends midcom_baseclasses_components_purecode
 
     /**
      * Initializes the class and stores the selected person to be shown
-     * The argument should be a MidgardPerson object.
-     *
-     * @param mixed $person Person to display either as MidgardPerson
      */
-    public function __construct($person = null)
+    public function __construct(midcom_db_person $person = null)
     {
         parent::__construct();
 
@@ -92,10 +84,12 @@ class org_openpsa_widgets_contact extends midcom_baseclasses_components_purecode
             self::$_contacts_url = $siteconfig->get_node_full_url('org.openpsa.contacts');
         }
 
-        $this->person = $person;
         // Read properties of provided person object
         // TODO: Handle groups as well
-        $this->_data_read_ok = $this->read_object($person);
+        if ($person) {
+            $this->person = $person;
+            $this->read_object($person);
+        }
     }
 
     public static function add_head_elements()
@@ -122,7 +116,7 @@ class org_openpsa_widgets_contact extends midcom_baseclasses_components_purecode
         }
 
         try {
-            $person = org_openpsa_contacts_person_dba::get_cached($src);
+            $person = midcom_db_person::get_cached($src);
         } catch (midcom_error $e) {
             $widget = new self();
             $cache[$src] = $widget;
@@ -139,13 +133,8 @@ class org_openpsa_widgets_contact extends midcom_baseclasses_components_purecode
     /**
      * Read properties of a person object and populate local fields accordingly
      */
-    private function read_object($person) : bool
+    private function read_object(midcom_db_person $person)
     {
-        if (   !is_object($person)
-            || !$person instanceof midcom_db_person) {
-            // Given $person is not one
-            return false;
-        }
         // Database identifiers
         $this->contact_details['guid'] = $person->guid;
         $this->contact_details['id'] = $person->id;
@@ -174,8 +163,6 @@ class org_openpsa_widgets_contact extends midcom_baseclasses_components_purecode
             && $person->get_parameter('org.openpsa.skype', 'name')) {
             $this->contact_details['skype'] = $person->get_parameter('org.openpsa.skype', 'name');
         }
-
-        return true;
     }
 
     private function _render_name(string $fallback_image) : string
@@ -223,7 +210,7 @@ class org_openpsa_widgets_contact extends midcom_baseclasses_components_purecode
      */
     public function show_inline() : string
     {
-        if (!$this->_data_read_ok) {
+        if (!$this->person) {
             return '';
         }
         self::add_head_elements();
@@ -252,7 +239,7 @@ class org_openpsa_widgets_contact extends midcom_baseclasses_components_purecode
      */
     public function show()
     {
-        if (!$this->_data_read_ok) {
+        if (!$this->person) {
             return false;
         }
         self::add_head_elements();
