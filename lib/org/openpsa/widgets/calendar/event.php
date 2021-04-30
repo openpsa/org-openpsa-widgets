@@ -14,7 +14,7 @@
 class org_openpsa_widgets_calendar_event
 {
     /**
-     * Event CGUID
+     * Event GUID
      *
      * @var string
      */
@@ -89,13 +89,10 @@ class org_openpsa_widgets_calendar_event
             $this->event = $event;
 
             // Read values from event object
-            $this->start = $this->event->start;
-            $this->end = $this->event->end;
-            $this->title = $this->event->title;
-
-            if (isset($this->event->location)) {
-                $this->location = $this->event->location;
-            }
+            $this->start = $event->start;
+            $this->end = $event->end;
+            $this->title = $event->title;
+            $this->location = $event->location;
         }
     }
 
