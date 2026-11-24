@@ -64,7 +64,8 @@ const org_openpsa_widgets_tabs = {
                 if ($(event.currentTarget).attr('onsubmit')) {
                     return;
                 }
-                var send_data = new FormData(this, event.originalEvent?.submitter);
+                var send_data = new FormData(this, event.originalEvent?.submitter),
+                    panel = $(this).closest('.ui-tabs-panel');
 
                 $.ajax({
                     data: send_data,
@@ -74,11 +75,26 @@ const org_openpsa_widgets_tabs = {
                     type: this.method,
                     url: this.getAttribute('action'),
                     success: function(data) {
-                        $(":not(.ui-tabs-hide) > .tab_div").html(data);
-                    }
+                        panel.html(data);
+                    },
+                    error: org_openpsa_widgets_tabs.show_error
                 });
                 event.preventDefault();
             });
+    },
+    show_error: function(response) {
+        if ($('#midcom_services_uimessages_wrapper').length > 0) {
+            const page = new DOMParser().parseFromString(response.responseText || '', 'text/html'),
+                title = page.querySelector('h1'),
+                message = page.querySelector('.error-message, p'),
+                escape = text => $('<div>').text(text).html();
+
+            $.midcom_services_uimessage_add({
+                type: 'error',
+                title: escape(title?.textContent.trim() || response.statusText),
+                message: escape(message?.textContent.trim() || 'Request failed')
+            });
+        }
     },
     load_head_elements: function(data, type, event) {
         data = data.replace(/<\/HEAD_ELEMENTS>[\s\S]+?/m, '</HEAD_ELEMENTS>');
@@ -148,6 +164,7 @@ const org_openpsa_widgets_tabs = {
     },
     intercept_clicks: function(event) {
         var target = $(event.currentTarget),
+            panel = target.closest('.ui-tabs-panel'),
             href = event.currentTarget.href;
 
         if (target.attr('onclick')) {
@@ -169,8 +186,9 @@ const org_openpsa_widgets_tabs = {
                 url: href,
                 dataFilter: org_openpsa_widgets_tabs.load_head_elements,
                 success: function(data) {
-                    $(":not(.ui-tabs-hide) > .tab_div").html(data);
-                }
+                    panel.html(data);
+                },
+                error: org_openpsa_widgets_tabs.show_error
             });
 
             event.preventDefault();
