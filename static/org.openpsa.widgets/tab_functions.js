@@ -1,10 +1,10 @@
 const org_openpsa_widgets_tabs = {
     loaded_scripts: [],
-    popstate: false,
-    initialize: function(uiprefix) {
-        org_openpsa_widgets_tabs.bind_events(uiprefix);
+    initialize: function() {
+        org_openpsa_widgets_tabs.bind_events();
 
         var tabs = $('#tabs').tabs({
+            active: org_openpsa_widgets_tabs.get_tab_from_url(),
             beforeLoad: function(event, ui) {
                 if (ui.tab.data("loaded")) {
                     event.preventDefault();
@@ -14,48 +14,53 @@ const org_openpsa_widgets_tabs = {
                 ui.jqXHR.done(function() {
                     ui.tab.data("loaded", true);
                 });
+                ui.ajaxSettings.url = ui.tab.find('.tabs_link').data('uitab');
                 ui.ajaxSettings.dataFilter = function(data, type) {
                     return org_openpsa_widgets_tabs.load_head_elements(data, type, event);
                 };
             },
             activate: function() {
-                var last_state = history.state,
-                    data = {tab_id: tabs.tabs('option', 'active')};
+                const tab_id = tabs.tabs('option', 'active');
 
-                // skip if the last state was same than current
-                if (!org_openpsa_widgets_tabs.popstate && (!last_state || last_state.tab_id !== data.tab_id)) {
-                    history.pushState(data, $('body').data('title'), '?tab-' + data.tab_id);
-                }
-            },
-            create: function() {
-                if (window.hasOwnProperty('history')) {
-                    window.onpopstate = org_openpsa_widgets_tabs.history_loader;
+                // skip if the URL already points to this tab (i.e. on back/forward navigation)
+                if (org_openpsa_widgets_tabs.get_tab_from_url() !== tab_id) {
+                    history.pushState({tab_id: tab_id}, $('body').data('title'), '?tab-' + tab_id);
                 }
             }
         });
+        window.onpopstate = org_openpsa_widgets_tabs.history_loader;
+    },
+    get_tab_from_url: function() {
+        const match = location.search.match(/[?&]tab-(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
     },
     history_loader: function() {
-        var state = history.state,
-            tab_id = 0;
+        const tab_id = org_openpsa_widgets_tabs.get_tab_from_url();
 
-        if (state) {
-            tab_id = state.tab_id;
-        }
-
-        if ($('#tabs').tabs('option', 'active') != tab_id) {
-            org_openpsa_widgets_tabs.popstate = true;
+        if ($('#tabs').tabs('option', 'active') !== tab_id) {
             $('#tabs').tabs('option', 'active', tab_id);
-            org_openpsa_widgets_tabs.popstate = false;
         }
     },
-    bind_events: function(uiprefix) {
+    modifier_active: function(event) {
+        return event.ctrlKey || event.metaKey || event.shiftKey;
+    },
+    bind_events: function() {
+        $('#tabs')[0].addEventListener('click', function(event) {
+            if (org_openpsa_widgets_tabs.modifier_active(event) && event.target.closest('.ui-tabs-nav a')) {
+                // leave modified clicks (open in new tab/window) to the browser
+                event.stopPropagation();
+            }
+        }, true); // <= capture phase, because bubble is preventDefault()ed in jquery.ui 
+
         $('#tabs')
-            .on('mousedown', '.ui-state-active a', function(event) {
-                if (event.which !== 1) {
+            .on('mousedown', '.ui-tabs-nav .ui-state-active a', function(event) {
+                if (event.which !== 1 || org_openpsa_widgets_tabs.modifier_active(event)) {
                     return;
                 }
-                location.href = this.href.replace(new RegExp('/' + uiprefix + '/'), '/');
+                location.href = this.href;
             })
+            // clean up links before they are used, so that "open in new tab" etc. get the full page
+            .on('pointerdown focusin click', '.ui-tabs-panel a', org_openpsa_widgets_tabs.strip_prefix)
             .on('click', '.ui-tabs-panel a', org_openpsa_widgets_tabs.intercept_clicks)
 
             //since this is loaded in a tab - change the submit-function of
@@ -162,28 +167,28 @@ const org_openpsa_widgets_tabs = {
 
         return data;
     },
-    intercept_clicks: function(event) {
-        var target = $(event.currentTarget),
-            panel = target.closest('.ui-tabs-panel'),
-            href = event.currentTarget.href;
+    strip_prefix: function(event) {
+        const link = event.currentTarget,
+            href = link.href;
 
-        if (target.attr('onclick')) {
-            return;
-        }
-
-        if (!href.match(/\/uitab\//)) {
+        if (link.getAttribute('onclick') || !href.match(/\/uitab\//)) {
             return;
         }
         //for now, only links to plugins will be displayed inside the tab
-        if (   !href.match(/\/__mfa\/org\.openpsa/)
-            || target.hasClass('tab_escape')) {
-            target.attr('href', href.replace(/\/uitab\/+/, '/'));
-            return;
+        if (   href.match(/\/__mfa\/org\.openpsa/)
+            && !link.classList.contains('tab_escape')
+            && !href.endsWith('#')) {
+            link.dataset.uitab = href;
         }
+        link.href = href.replace(/\/uitab\/+/, '/');
+    },
+    intercept_clicks: function(event) {
+        const panel = $(event.currentTarget).closest('.ui-tabs-panel'),
+            url = event.currentTarget.dataset.uitab;
 
-        if (href.slice(href.length - 1, href.length) !== '#') {
+        if (url && !org_openpsa_widgets_tabs.modifier_active(event)) {
             $.ajax({
-                url: href,
+                url: url,
                 dataFilter: org_openpsa_widgets_tabs.load_head_elements,
                 success: function(data) {
                     panel.html(data);
